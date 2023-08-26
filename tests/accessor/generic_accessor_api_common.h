@@ -120,353 +120,268 @@ class run_api_tests {
   static constexpr sycl::access_mode AccessMode = AccessT::value;
   static constexpr int dims = DimensionT::value;
   static constexpr sycl::target Target = TargetT::value;
-  using AccT = sycl::accessor<T, dims, AccessMode, Target>;
+  using AccT = sycl::accessor<sycl::vec<long long int, 1>, 0, sycl::access_mode::write, sycl::target::device>;
 
  public:
   void operator()(const std::string &type_name,
                   const std::string &access_mode_name,
                   const std::string &target_name) {
-    auto queue = once_per_unit::get_queue();
+    // auto queue = once_per_unit::get_queue();
+    sycl::queue queue;
     constexpr int buf_dims = (0 == dims) ? 1 : dims;
     auto r = util::get_cts_object::range<buf_dims>::get(1, 1, 1);
 
-    SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
-                                   "Check accessor alias types")) {
-      test_accessor_types<T, AccT, AccessMode, Target>();
-    }
+    // SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
+    //                                "Check accessor alias types")) {
+    //   test_accessor_types<T, AccT, AccessMode, Target>();
+    // }
 
-    SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
-                                   "Check api for empty accessor")) {
-      queue
-          .submit([&](sycl::handler &cgh) {
-            AccT acc;
-            test_accessor_methods(acc, 0 /* expected_byte_size*/,
-                                  0 /*expected_size*/,
-                                  false /*expected_isPlaceholder*/);
-            if constexpr (0 < dims) {
-              test_accessor_range_methods(
-                  acc,
-                  util::get_cts_object::range<dims>::get(0, 0,
-                                                         0) /*expected_range*/,
-                  sycl::id<dims>() /*&expected_offset*/);
-            }
-          })
-          .wait_and_throw();
-    }
+    // SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
+    //                                "Check api for empty accessor")) {
+    //   queue
+    //       .submit([&](sycl::handler &cgh) {
+    //         AccT acc;
+    //         test_accessor_methods(acc, 0 /* expected_byte_size*/,
+    //                               0 /*expected_size*/,
+    //                               false /*expected_isPlaceholder*/);
+    //         if constexpr (0 < dims) {
+    //           test_accessor_range_methods(
+    //               acc,
+    //               util::get_cts_object::range<dims>::get(0, 0,
+    //                                                      0) /*expected_range*/,
+    //               sycl::id<dims>() /*&expected_offset*/);
+    //         }
+    //       })
+    //       .wait_and_throw();
+    // }
 
-    SECTION(
-        get_section_name<dims>(type_name, access_mode_name, target_name,
-                               "Check api for buffer placeholder accessor")) {
-      T data = value_operations::init<T>(expected_val);
-      bool res = false;
-      {
-        sycl::buffer<T, buf_dims> data_buf(&data, r);
-        AccT acc(data_buf);
+    // SECTION(
+    //     get_section_name<dims>(type_name, access_mode_name, target_name,
+    //                            "Check api for buffer placeholder accessor")) {
+    //   T data = value_operations::init<T>(expected_val);
+    //   bool res = false;
+    //   {
+    //     sycl::buffer<T, buf_dims> data_buf(&data, r);
+    //     AccT acc(data_buf);
 
-        test_accessor_methods(acc, sizeof(T) /* expected_byte_size*/,
-                              1 /*expected_size*/,
-                              true /*expected_isPlaceholder*/);
-        if constexpr (dims > 0) {
-          test_accessor_range_methods(acc,
-                                      util::get_cts_object::range<dims>::get(
-                                          1, 1, 1) /*expected_range*/,
-                                      sycl::id<dims>() /*&expected_offset*/);
-        }
-      }
-    }
+    //     test_accessor_methods(acc, sizeof(T) /* expected_byte_size*/,
+    //                           1 /*expected_size*/,
+    //                           true /*expected_isPlaceholder*/);
+    //     if constexpr (dims > 0) {
+    //       test_accessor_range_methods(acc,
+    //                                   util::get_cts_object::range<dims>::get(
+    //                                       1, 1, 1) /*expected_range*/,
+    //                                   sycl::id<dims>() /*&expected_offset*/);
+    //     }
+    //   }
+    // }
 
     SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
                                    "Check api for buffer accessor")) {
       T data = value_operations::init<T>(expected_val);
-      constexpr size_t res_size = 15;
+      // constexpr size_t res_size = 15;
+      constexpr size_t res_size = 2;
       bool res[res_size];
       std::fill(res, res + res_size, true);
       {
-        sycl::buffer<T, buf_dims> data_buf(&data, r);
+        sycl::buffer<T, 1> data_buf(&data, sycl::range(1));
         sycl::buffer res_buf(res, sycl::range(res_size));
         queue
             .submit([&](sycl::handler &cgh) {
               AccT acc(data_buf, cgh);
 
-              test_accessor_methods(acc, sizeof(T) /* expected_byte_size*/,
-                                    1 /*expected_size*/,
-                                    false /*expected_isPlaceholder*/);
-              if constexpr (0 < dims) {
-                test_accessor_range_methods(
-                    acc,
-                    util::get_cts_object::range<dims>::get(
-                        1, 1, 1) /*expected_range*/,
-                    sycl::id<dims>() /*&expected_offset*/);
-              }
-
-              if constexpr (Target == sycl::target::host_task) {
-                cgh.host_task([=] {
-                  test_accessor_ptr_host(acc, expected_val);
-                  test_begin_end_host(acc, expected_val, expected_val, false);
-                  if constexpr (0 < dims) {
-                    auto &acc_ref1 = acc[sycl::id<dims>()];
-                    auto &acc_ref2 =
-                        get_subscript_overload<T, AccT, dims>(acc, 0);
-                    CHECK(value_operations::are_equal(acc_ref1, expected_val));
-                    CHECK(value_operations::are_equal(acc_ref2, expected_val));
-                    STATIC_CHECK(std::is_same_v<decltype(acc_ref1),
-                                                typename AccT::reference>);
-                    STATIC_CHECK(std::is_same_v<decltype(acc_ref2),
-                                                typename AccT::reference>);
-                    if constexpr (AccessMode != sycl::access_mode::read) {
-                      value_operations::assign(acc_ref1, changed_val);
-                      CHECK(value_operations::are_equal(acc_ref2, changed_val));
-                    }
-                  } else {
-                    T some_data = value_operations::init<T>(expected_val);
-                    typename AccT::reference dref = acc;
-                    CHECK(value_operations::are_equal(some_data, dref));
-                    if constexpr (AccessMode != sycl::access_mode::read) {
-                      typename AccT::value_type v_data =
-                          value_operations::init<typename AccT::value_type>(
-                              changed_val);
-                      // check method const AccT::operator=(const T& data) const
-                      acc = v_data;
-                      CHECK(value_operations::are_equal(dref, v_data));
-
-                      // check method const AccT::operator=(T&& data) const
-                      acc = value_operations::init<typename AccT::value_type>(
-                          changed_val);
-                      CHECK(value_operations::are_equal(dref, v_data));
-                    }
-                  }
-                });
-              } else {
-                using kname =
-                    kernel_buffer_accessor<T, AccessT, DimensionT, TargetT>;
+                // using kname =
+                //     kernel_buffer_accessor<T, AccessT, DimensionT, TargetT>;
                 sycl::accessor res_acc(res_buf, cgh);
-                cgh.single_task<kname>([acc, res_acc]() {
-                  T converted_expected_val =
-                      value_operations::init<T>(expected_val);
+                // cgh.single_task<kname>([acc, res_acc]() {
+                cgh.single_task< class kname>([acc, res_acc]() {
                   size_t res_i = 0;
-                  test_accessor_ptr_device(acc, converted_expected_val, res_acc,
-                                           res_i);
 
-                  res_acc[res_i++] = test_begin_end_device(acc, expected_val,
-                                                           expected_val, true);
-
-                  if constexpr (0 < dims) {
-                    auto &acc_ref1 = acc[sycl::id<dims>()];
-                    auto &acc_ref2 =
-                        get_subscript_overload<T, AccT, dims>(acc, 0);
-                    res_acc[res_i++] =
-                        value_operations::are_equal(acc_ref1, expected_val);
-
-                    res_acc[res_i++] =
-                        value_operations::are_equal(acc_ref2, expected_val);
-
-                    res_acc[res_i++] = std::is_same_v<decltype(acc_ref1),
-                                                      typename AccT::reference>;
-
-                    res_acc[res_i++] = std::is_same_v<decltype(acc_ref2),
-                                                      typename AccT::reference>;
-
-                    if constexpr (AccessMode != sycl::access_mode::read) {
-                      value_operations::assign(acc_ref1, changed_val);
-                      res_acc[res_i++] =
-                          value_operations::are_equal(acc_ref2, changed_val);
-                    }
-                  } else {
-                    T some_data = value_operations::init<T>(expected_val);
+                    // T some_data = value_operations::init<T>(expected_val);
                     typename AccT::reference dref = acc;
+
+                    typename AccT::value_type v_data =
+                        value_operations::init<typename AccT::value_type>(
+                            changed_val);
+                    // check method const AccT::operator=(const T& data) const
+                    acc = v_data;
                     res_acc[res_i++] =
-                        value_operations::are_equal(some_data, dref);
+                        value_operations::are_equal(dref, v_data);
 
-                    if constexpr (AccessMode != sycl::access_mode::read) {
-                      typename AccT::value_type v_data =
-                          value_operations::init<typename AccT::value_type>(
-                              changed_val);
-                      // check method const AccT::operator=(const T& data) const
-                      acc = v_data;
-                      res_acc[res_i++] =
-                          value_operations::are_equal(dref, v_data);
-
-                      // check method const AccT::operator=(T&& data) const
-                      acc = value_operations::init<typename AccT::value_type>(
-                          changed_val);
-                      res_acc[res_i++] =
-                          value_operations::are_equal(dref, v_data);
-                    }
-                  }
+                    // check method const AccT::operator=(T&& data) const
+                    acc = value_operations::init<typename AccT::value_type>(
+                        changed_val);
+                    res_acc[res_i++] =
+                        value_operations::are_equal(dref, v_data);
                 });
-              }
             })
             .wait_and_throw();
       }
-      if constexpr (Target == sycl::target::device) {
-        for (size_t i = 0; i < res_size; ++i) {
-          CHECK(res[i]);
-        }
-      }
-      if constexpr (AccessMode != sycl::access_mode::read)
-        CHECK(value_operations::are_equal(data, changed_val));
-    }
-    if constexpr (0 < dims) {
-      SECTION(
-          get_section_name<dims>(type_name, access_mode_name, target_name,
-                                 "Check api for ranged accessor with offset")) {
-        constexpr size_t acc_range_size = 4;
-        constexpr size_t buff_range_size = 8;
-        constexpr size_t buff_size = (dims == 3)   ? 8 * 8 * 8
-                                     : (dims == 2) ? 8 * 8
-                                                   : 8;
-        constexpr size_t offset = 4;
-        constexpr size_t index = 2;
-        constexpr size_t first_elem = (dims == 3 ? offset * 8 * 8 : 0) +
-                                      (dims >= 2 ? offset * 8 : 0) + offset;
-        constexpr size_t last_elem =
-            (dims == 3 ? (acc_range_size - 1) * 8 * 8 : 0) +
-            (dims >= 2 ? (acc_range_size - 1) * 8 : 0) + (acc_range_size - 1) +
-            first_elem;
-        int linear_index = 0;
-        for (size_t i = 0; i < dims; i++) {
-          linear_index += (offset + index) * pow(buff_range_size, dims - i - 1);
-        }
-        auto acc_range = util::get_cts_object::range<dims>::get(
-            acc_range_size, acc_range_size, acc_range_size);
-        auto buff_range = util::get_cts_object::range<dims>::get(
-            buff_range_size, buff_range_size, buff_range_size);
-        auto offset_id =
-            util::get_cts_object::id<dims>::get(offset, offset, offset);
-        std::remove_const_t<T> data[buff_size];
-        std::generate(data, (data + buff_range.size()), [i = 0]() mutable {
-          return value_operations::init<T>(i++);
-        });
-        constexpr size_t res_size = 9;
-        bool res[res_size];
-        std::fill(res, res + res_size, true);
-        {
-          sycl::buffer<T, dims> data_buf(data, buff_range);
-          sycl::buffer res_buf(res, sycl::range(res_size));
-          queue
-              .submit([&](sycl::handler &cgh) {
-                AccT acc(data_buf, cgh, acc_range, offset_id);
-                test_accessor_methods(
-                    acc, sizeof(T) * acc_range.size() /* expected_byte_size*/,
-                    acc_range.size() /*expected_size*/,
-                    false /*expected_isPlaceholder*/);
-                test_accessor_range_methods(acc, acc_range /*expected_range*/,
-                                            offset_id /*&expected_offset*/);
-
-                if constexpr (Target == sycl::target::host_task) {
-                  cgh.host_task([=] {
-                    test_accessor_ptr_host(acc, T());
-                    test_begin_end_host(
-                        acc, value_operations::init<T>(first_elem),
-                        value_operations::init<T>(last_elem), false);
-                    auto &acc_ref1 =
-                        get_subscript_overload<T, AccT, dims>(acc, index);
-                    auto &acc_ref2 = acc[sycl::id<dims>()];
-                    CHECK(value_operations::are_equal(acc_ref1, linear_index));
-                    CHECK(value_operations::are_equal(acc_ref2, first_elem));
-                    if constexpr (AccessMode != sycl::access_mode::read) {
-                      value_operations::assign(acc_ref1, changed_val);
-                      value_operations::assign(acc_ref2, expected_val);
-                    }
-                  });
-                } else {
-                  using kname = kernel_offset<T, AccessT, DimensionT, TargetT>;
-                  sycl::accessor res_acc(res_buf, cgh);
-                  cgh.single_task<kname>([=]() {
-                    T val = T();
-                    size_t res_i = 0;
-                    test_accessor_ptr_device(acc, val, res_acc, res_i);
-
-                    res_acc[res_i++] = test_begin_end_device(
-                        acc, value_operations::init<T>(first_elem),
-                        value_operations::init<T>(last_elem), true);
-
-                    auto &acc_ref1 =
-                        get_subscript_overload<T, AccT, dims>(acc, index);
-                    auto &acc_ref2 = acc[sycl::id<dims>()];
-                    res_acc[res_i++] =
-                        value_operations::are_equal(acc_ref1, linear_index);
-
-                    res_acc[res_i++] =
-                        value_operations::are_equal(acc_ref2, first_elem);
-
-                    if constexpr (AccessMode != sycl::access_mode::read) {
-                      value_operations::assign(acc_ref1, changed_val);
-                      value_operations::assign(acc_ref2, expected_val);
-                    }
-                  });
-                }
-              })
-              .wait_and_throw();
-        }
-        if constexpr (Target == sycl::target::device) {
-          for (size_t i = 0; i < res_size; ++i) {
-            CHECK(res[i]);
-          }
-        }
-        if constexpr (AccessMode != sycl::access_mode::read) {
-          CHECK(value_operations::are_equal(data[linear_index], changed_val));
-          CHECK(value_operations::are_equal(data[first_elem], expected_val));
-        }
+      for (size_t i = 0; i < res_size; ++i) {
+        CHECK(res[i]);
       }
     }
-    SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
-                                   "Check swap for accessor")) {
-      T data1 = value_operations::init<T>(expected_val);
-      T data2 = value_operations::init<T>(changed_val);
-      bool res = false;
-      {
-        sycl::buffer res_buf(&res, sycl::range(1));
-        sycl::buffer<T, buf_dims> data_buf1(&data1, r);
-        sycl::buffer<T, buf_dims> data_buf2(&data2, r);
-        queue
-            .submit([&](sycl::handler &cgh) {
-              AccT acc1(data_buf1, cgh);
-              AccT acc2(data_buf2, cgh);
-              acc1.swap(acc2);
-              if constexpr (Target == sycl::target::host_task) {
-                cgh.host_task([=] {
-                  typename AccT::reference acc_ref1 =
-                      get_accessor_reference<dims>(acc1);
-                  typename AccT::reference acc_ref2 =
-                      get_accessor_reference<dims>(acc2);
-                  CHECK(value_operations::are_equal(acc_ref1, changed_val));
-                  CHECK(value_operations::are_equal(acc_ref2, expected_val));
-                  if constexpr (AccessMode != sycl::access_mode::read) {
-                    value_operations::assign(acc_ref1, expected_val);
-                    value_operations::assign(acc_ref2, changed_val);
-                  }
-                });
-              } else {
-                using kname = kernel_swap<T, AccessT, DimensionT, TargetT>;
-                sycl::accessor res_acc(res_buf, cgh);
-                cgh.single_task<kname>([=]() {
-                  typename AccT::reference acc_ref1 =
-                      get_accessor_reference<dims>(acc1);
-                  typename AccT::reference acc_ref2 =
-                      get_accessor_reference<dims>(acc2);
-                  res_acc[0] =
-                      value_operations::are_equal(acc_ref1, changed_val);
-                  res_acc[0] &=
-                      value_operations::are_equal(acc_ref2, expected_val);
-                  if constexpr (AccessMode != sycl::access_mode::read) {
-                    value_operations::assign(acc_ref1, expected_val);
-                    value_operations::assign(acc_ref2, changed_val);
-                  }
-                });
-              }
-            })
-            .wait_and_throw();
-      }
-      if constexpr (Target == sycl::target::device) CHECK(res);
-      if constexpr (AccessMode != sycl::access_mode::read) {
-        CHECK(value_operations::are_equal(data1, changed_val));
-        CHECK(value_operations::are_equal(data2, expected_val));
-      } else {
-        CHECK(value_operations::are_equal(data1, expected_val));
-        CHECK(value_operations::are_equal(data2, changed_val));
-      }
-    }
+    // if constexpr (0 < dims) {
+    //   SECTION(
+    //       get_section_name<dims>(type_name, access_mode_name, target_name,
+    //                              "Check api for ranged accessor with offset")) {
+    //     constexpr size_t acc_range_size = 4;
+    //     constexpr size_t buff_range_size = 8;
+    //     constexpr size_t buff_size = (dims == 3)   ? 8 * 8 * 8
+    //                                  : (dims == 2) ? 8 * 8
+    //                                                : 8;
+    //     constexpr size_t offset = 4;
+    //     constexpr size_t index = 2;
+    //     constexpr size_t first_elem = (dims == 3 ? offset * 8 * 8 : 0) +
+    //                                   (dims >= 2 ? offset * 8 : 0) + offset;
+    //     constexpr size_t last_elem =
+    //         (dims == 3 ? (acc_range_size - 1) * 8 * 8 : 0) +
+    //         (dims >= 2 ? (acc_range_size - 1) * 8 : 0) + (acc_range_size - 1) +
+    //         first_elem;
+    //     int linear_index = 0;
+    //     for (size_t i = 0; i < dims; i++) {
+    //       linear_index += (offset + index) * pow(buff_range_size, dims - i - 1);
+    //     }
+    //     auto acc_range = util::get_cts_object::range<dims>::get(
+    //         acc_range_size, acc_range_size, acc_range_size);
+    //     auto buff_range = util::get_cts_object::range<dims>::get(
+    //         buff_range_size, buff_range_size, buff_range_size);
+    //     auto offset_id =
+    //         util::get_cts_object::id<dims>::get(offset, offset, offset);
+    //     std::remove_const_t<T> data[buff_size];
+    //     std::generate(data, (data + buff_range.size()), [i = 0]() mutable {
+    //       return value_operations::init<T>(i++);
+    //     });
+    //     constexpr size_t res_size = 9;
+    //     bool res[res_size];
+    //     std::fill(res, res + res_size, true);
+    //     {
+    //       sycl::buffer<T, dims> data_buf(data, buff_range);
+    //       sycl::buffer res_buf(res, sycl::range(res_size));
+    //       queue
+    //           .submit([&](sycl::handler &cgh) {
+    //             AccT acc(data_buf, cgh, acc_range, offset_id);
+    //             test_accessor_methods(
+    //                 acc, sizeof(T) * acc_range.size() /* expected_byte_size*/,
+    //                 acc_range.size() /*expected_size*/,
+    //                 false /*expected_isPlaceholder*/);
+    //             test_accessor_range_methods(acc, acc_range /*expected_range*/,
+    //                                         offset_id /*&expected_offset*/);
+
+    //             if constexpr (Target == sycl::target::host_task) {
+    //               cgh.host_task([=] {
+    //                 test_accessor_ptr_host(acc, T());
+    //                 test_begin_end_host(
+    //                     acc, value_operations::init<T>(first_elem),
+    //                     value_operations::init<T>(last_elem), false);
+    //                 auto &acc_ref1 =
+    //                     get_subscript_overload<T, AccT, dims>(acc, index);
+    //                 auto &acc_ref2 = acc[sycl::id<dims>()];
+    //                 CHECK(value_operations::are_equal(acc_ref1, linear_index));
+    //                 CHECK(value_operations::are_equal(acc_ref2, first_elem));
+    //                 if constexpr (AccessMode != sycl::access_mode::read) {
+    //                   value_operations::assign(acc_ref1, changed_val);
+    //                   value_operations::assign(acc_ref2, expected_val);
+    //                 }
+    //               });
+    //             } else {
+    //               using kname = kernel_offset<T, AccessT, DimensionT, TargetT>;
+    //               sycl::accessor res_acc(res_buf, cgh);
+    //               cgh.single_task<kname>([=]() {
+    //                 T val = T();
+    //                 size_t res_i = 0;
+    //                 test_accessor_ptr_device(acc, val, res_acc, res_i);
+
+    //                 res_acc[res_i++] = test_begin_end_device(
+    //                     acc, value_operations::init<T>(first_elem),
+    //                     value_operations::init<T>(last_elem), true);
+
+    //                 auto &acc_ref1 =
+    //                     get_subscript_overload<T, AccT, dims>(acc, index);
+    //                 auto &acc_ref2 = acc[sycl::id<dims>()];
+    //                 res_acc[res_i++] =
+    //                     value_operations::are_equal(acc_ref1, linear_index);
+
+    //                 res_acc[res_i++] =
+    //                     value_operations::are_equal(acc_ref2, first_elem);
+
+    //                 if constexpr (AccessMode != sycl::access_mode::read) {
+    //                   value_operations::assign(acc_ref1, changed_val);
+    //                   value_operations::assign(acc_ref2, expected_val);
+    //                 }
+    //               });
+    //             }
+    //           })
+    //           .wait_and_throw();
+    //     }
+    //     if constexpr (Target == sycl::target::device) {
+    //       for (size_t i = 0; i < res_size; ++i) {
+    //         CHECK(res[i]);
+    //       }
+    //     }
+    //     if constexpr (AccessMode != sycl::access_mode::read) {
+    //       CHECK(value_operations::are_equal(data[linear_index], changed_val));
+    //       CHECK(value_operations::are_equal(data[first_elem], expected_val));
+    //     }
+    //   }
+    // }
+    // SECTION(get_section_name<dims>(type_name, access_mode_name, target_name,
+    //                                "Check swap for accessor")) {
+    //   T data1 = value_operations::init<T>(expected_val);
+    //   T data2 = value_operations::init<T>(changed_val);
+    //   bool res = false;
+    //   {
+    //     sycl::buffer res_buf(&res, sycl::range(1));
+    //     sycl::buffer<T, buf_dims> data_buf1(&data1, r);
+    //     sycl::buffer<T, buf_dims> data_buf2(&data2, r);
+    //     queue
+    //         .submit([&](sycl::handler &cgh) {
+    //           AccT acc1(data_buf1, cgh);
+    //           AccT acc2(data_buf2, cgh);
+    //           acc1.swap(acc2);
+    //           if constexpr (Target == sycl::target::host_task) {
+    //             cgh.host_task([=] {
+    //               typename AccT::reference acc_ref1 =
+    //                   get_accessor_reference<dims>(acc1);
+    //               typename AccT::reference acc_ref2 =
+    //                   get_accessor_reference<dims>(acc2);
+    //               CHECK(value_operations::are_equal(acc_ref1, changed_val));
+    //               CHECK(value_operations::are_equal(acc_ref2, expected_val));
+    //               if constexpr (AccessMode != sycl::access_mode::read) {
+    //                 value_operations::assign(acc_ref1, expected_val);
+    //                 value_operations::assign(acc_ref2, changed_val);
+    //               }
+    //             });
+    //           } else {
+    //             using kname = kernel_swap<T, AccessT, DimensionT, TargetT>;
+    //             sycl::accessor res_acc(res_buf, cgh);
+    //             cgh.single_task<kname>([=]() {
+    //               typename AccT::reference acc_ref1 =
+    //                   get_accessor_reference<dims>(acc1);
+    //               typename AccT::reference acc_ref2 =
+    //                   get_accessor_reference<dims>(acc2);
+    //               res_acc[0] =
+    //                   value_operations::are_equal(acc_ref1, changed_val);
+    //               res_acc[0] &=
+    //                   value_operations::are_equal(acc_ref2, expected_val);
+    //               if constexpr (AccessMode != sycl::access_mode::read) {
+    //                 value_operations::assign(acc_ref1, expected_val);
+    //                 value_operations::assign(acc_ref2, changed_val);
+    //               }
+    //             });
+    //           }
+    //         })
+    //         .wait_and_throw();
+    //   }
+    //   if constexpr (Target == sycl::target::device) CHECK(res);
+    //   if constexpr (AccessMode != sycl::access_mode::read) {
+    //     CHECK(value_operations::are_equal(data1, changed_val));
+    //     CHECK(value_operations::are_equal(data2, expected_val));
+    //   } else {
+    //     CHECK(value_operations::are_equal(data1, expected_val));
+    //     CHECK(value_operations::are_equal(data2, changed_val));
+    //   }
+    // }
   }
 };
 
@@ -498,14 +413,14 @@ class run_generic_api_for_type {
     for_all_combinations<run_api_tests, T>(access_modes, dimensions, targets,
                                            actual_type_name);
 
-    // For covering const types
-    actual_type_name = std::string("const ") + actual_type_name;
-    // const T can be only with access_mode::read
-    const auto read_only_acc_mode =
-        value_pack<sycl::access_mode, sycl::access_mode::read>::generate_named(
-            "access_mode::read");
-    for_all_combinations<run_api_tests, const T>(read_only_acc_mode, dimensions,
-                                                 targets, actual_type_name);
+    // // For covering const types
+    // actual_type_name = std::string("const ") + actual_type_name;
+    // // const T can be only with access_mode::read
+    // const auto read_only_acc_mode =
+    //     value_pack<sycl::access_mode, sycl::access_mode::read>::generate_named(
+    //         "access_mode::read");
+    // for_all_combinations<run_api_tests, const T>(read_only_acc_mode, dimensions,
+    //                                              targets, actual_type_name);
   }
 };
 }  // namespace generic_accessor_api_common

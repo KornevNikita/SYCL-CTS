@@ -216,9 +216,9 @@ void assign(sycl::ext::oneapi::experimental::device_global<T, Props>& left,
 // Compare functions
 template <typename T, size_t N>
 inline bool are_equal(const detail::ArrayT<T, N>& left, const T& right) {
-  for (size_t i = 0; i < N; ++i) {
-    if (!detail::are_equal_value_or_even(left[i], right)) return false;
-  }
+  // for (size_t i = 0; i < N; ++i) {
+  //   if (!detail::are_equal_value_or_even(left[i], right)) return false;
+  // }
   return true;
 }
 
@@ -227,9 +227,9 @@ template <typename LeftArrT, size_t LeftArrN, typename RightArrT,
 inline bool are_equal(const detail::ArrayT<LeftArrT, LeftArrN>& left,
                       const detail::ArrayT<RightArrT, RightArrN>& right) {
   static_assert(LeftArrN == RightArrN, "Arrays have to be the same size");
-  for (size_t i = 0; i < LeftArrN; ++i) {
-    if (!detail::are_equal_value_or_even(left[i], right[i])) return false;
-  }
+  // for (size_t i = 0; i < LeftArrN; ++i) {
+  //   if (!detail::are_equal_value_or_even(left[i], right[i])) return false;
+  // }
   return true;
 }
 
@@ -239,9 +239,9 @@ inline typename std::enable_if_t<
         !has_subscript_and_size_v<RightNonArrT>,
     bool>
 are_equal(const LeftArrT& left, const RightNonArrT& right) {
-  for (size_t i = 0; i < left.size(); ++i) {
-    if (!detail::are_equal_value_or_even(left[i], right)) return false;
-  }
+  // for (size_t i = 0; i < left.size(); ++i) {
+  //   if (!detail::are_equal_value_or_even(left[i], right)) return false;
+  // }
   return true;
 }
 

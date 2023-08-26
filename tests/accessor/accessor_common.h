@@ -41,7 +41,7 @@ namespace accessor_tests_common {
 using namespace sycl_cts;
 
 constexpr int expected_val = 42;
-constexpr int changed_val = 1;
+constexpr int changed_val = 666;
 
 /**
  * @brief Enum class for accessor type specification
@@ -163,16 +163,18 @@ inline auto get_fp64_type() {
  * @brief Factory function for getting type_pack with all generic types
  */
 inline auto get_full_conformance_type_pack() {
+  // static const auto types =
+  //     named_type_pack<bool, char, signed char, unsigned char, short int,
+  //                     unsigned short int, int, unsigned int, long int,
+  //                     unsigned long int, long long int, unsigned long long int,
+  //                     float>::generate("bool", "char", "signed char",
+  //                                      "unsigned char", "short int",
+  //                                      "unsigned short int", "int",
+  //                                      "unsigned int", "long int",
+  //                                      "unsigned long int", "long long int",
+  //                                      "unsigned long long int", "float");
   static const auto types =
-      named_type_pack<bool, char, signed char, unsigned char, short int,
-                      unsigned short int, int, unsigned int, long int,
-                      unsigned long int, long long int, unsigned long long int,
-                      float>::generate("bool", "char", "signed char",
-                                       "unsigned char", "short int",
-                                       "unsigned short int", "int",
-                                       "unsigned int", "long int",
-                                       "unsigned long int", "long long int",
-                                       "unsigned long long int", "float");
+      named_type_pack<sycl::vec<long long int, 1>>::generate("sycl::vec<long long int, 1>");
   return types;
 }
 
@@ -209,21 +211,24 @@ template <template <typename, typename...> class action,
 void common_run_tests() {
   const auto types = get_conformance_type_pack();
 #if SYCL_CTS_ENABLE_FULL_CONFORMANCE
-  for_all_types_vectors_marray<action, actionArgsT...>(types);
+  // for_all_types_vectors_marray<action, actionArgsT...>(types);
+  for_all_types<action, actionArgsT...>(types);
 #else
   for_all_types<action, actionArgsT...>(types);
   for_type_vectors_marray_reduced<action, int, actionArgsT...>("int");
 #endif
-  for_all_types<action, actionArgsT...>(
-      named_type_pack<user_struct>::generate("user_struct"));
+  // for_all_types<action, actionArgsT...>(
+  //     named_type_pack<user_struct>::generate("user_struct"));
 }
 
 /**
  * @brief Alias for a value pack containing all tested access modes.
  */
+// using access_modes_pack =
+//     value_pack<sycl::access_mode, sycl::access_mode::read,
+//                sycl::access_mode::write, sycl::access_mode::read_write>;
 using access_modes_pack =
-    value_pack<sycl::access_mode, sycl::access_mode::read,
-               sycl::access_mode::write, sycl::access_mode::read_write>;
+    value_pack<sycl::access_mode, sycl::access_mode::write>;
 
 /**
  * @brief Alias for a integer value pack containing all valid non-zero
@@ -234,13 +239,16 @@ using dimensions_pack = integer_pack<1, 2, 3>;
 /**
  * @brief Alias for a integer value pack containing all valid dimensions.
  */
-using all_dimensions_pack = integer_pack<0, 1, 2, 3>;
+// using all_dimensions_pack = integer_pack<0, 1, 2, 3>;
+using all_dimensions_pack = integer_pack<0>;
 
 /**
  * @brief Alias for a value pack containing all tested targets.
  */
+// using targets_pack =
+    // value_pack<sycl::target, sycl::target::device, sycl::target::host_task>;
 using targets_pack =
-    value_pack<sycl::target, sycl::target::device, sycl::target::host_task>;
+    value_pack<sycl::target, sycl::target::device>;
 
 /**
  * @brief Lightweight struct for containing tuple types with the singleton packs

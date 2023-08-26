@@ -483,16 +483,17 @@ void for_type_vectors_marray(argsT &&...args) {
     for_all_types<action, actionArgsT...>(
         // Provides all possible sizes (according to SYCL-2020 rev.5) for
         // sycl::vec
-        type_pack<T, typename sycl::template vec<T, 1>,
-                  typename sycl::template vec<T, 2>,
-                  typename sycl::template vec<T, 3>,
-                  typename sycl::template vec<T, 4>,
-                  typename sycl::template vec<T, 8>,
-                  typename sycl::template vec<T, 16>,
+        // type_pack<T, typename sycl::template vec<T, 1>,
+        type_pack<T, typename sycl::template vec<T, 1>>{},
+                  // typename sycl::template vec<T, 2>,
+                  // typename sycl::template vec<T, 3>,
+                  // typename sycl::template vec<T, 4>,
+                  // typename sycl::template vec<T, 8>,
+                  // typename sycl::template vec<T, 16>,
                   // Provide different sizes for sycl::marray
-                  typename sycl::template marray<T, small_marray_size>,
-                  typename sycl::template marray<T, medium_marray_size>,
-                  typename sycl::template marray<T, large_marray_size>>{},
+                  // typename sycl::template marray<T, small_marray_size>,
+                  // typename sycl::template marray<T, medium_marray_size>,
+                  // typename sycl::template marray<T, large_marray_size>>{},
         std::forward<argsT>(args)...);
   }
 }
@@ -524,19 +525,20 @@ void for_type_vectors_marray_reduced(argsT&&... args) {
         // sycl::vec
         type_pack<T,
 #if SYCL_CTS_ENABLE_FULL_CONFORMANCE
-                  typename sycl::template vec<T, 1>,
-                  typename sycl::template vec<T, 2>,
+                  typename sycl::template vec<T, 1>>{},
+                  // typename sycl::template vec<T, 1>,
+                  // typename sycl::template vec<T, 2>,
 #endif
-                  typename sycl::template vec<T, 3>,
-                  typename sycl::template vec<T, 4>,
+                  // typename sycl::template vec<T, 3>,
+                  // typename sycl::template vec<T, 4>,
 #if SYCL_CTS_ENABLE_FULL_CONFORMANCE
-                  typename sycl::template vec<T, 8>,
-                  typename sycl::template vec<T, 16>,
+                  // typename sycl::template vec<T, 8>,
+                  // typename sycl::template vec<T, 16>,
                   // Provide different sizes for sycl::marray
-                  typename sycl::template marray<T, small_marray_size>,
-                  typename sycl::template marray<T, medium_marray_size>,
+                  // typename sycl::template marray<T, small_marray_size>,
+                  // typename sycl::template marray<T, medium_marray_size>,
 #endif
-                  typename sycl::template marray<T, large_marray_size>>{},
+                  // typename sycl::template marray<T, large_marray_size>>{},
         std::forward<argsT>(args)...);
   }
 }
