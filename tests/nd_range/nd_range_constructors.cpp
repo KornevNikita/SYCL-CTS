@@ -93,13 +93,14 @@ sycl::nd_range<dim> get_nd_range(sycl::range<dim>& ls, sycl::range<dim>& gs) {
 template <int dim, bool with_offset, typename ResultArray>
 void check_by_value_semantics(ResultArray& result, sycl::range<dim>& ls,
                               sycl::range<dim>& gs) {
-  static_assert(std::is_default_constructible_v<sycl::nd_range<dim>>,
-                "nd_range must be default constructible");
-
   sycl::id<dim> offset = sycl_cts::util::get_cts_object::id<dim>::get(0, 0, 0);
   if constexpr (with_offset) {
     offset = get_offset<dim>();
   }
+
+#if !SYCL_CTS_COMPILING_WITH_ADAPTIVECPP && !SYCL_CTS_COMPILING_WITH_PROTOSYCL
+  static_assert(std::is_default_constructible_v<sycl::nd_range<dim>>,
+                "nd_range must be default constructible");
 
   // A default constructed nd_range has the value 0 for each component of its
   // global range, local range and offset. Note that get_group_range() is
@@ -141,6 +142,8 @@ void check_by_value_semantics(ResultArray& result, sycl::range<dim>& ls,
     set_success_operation<op_codes::assign_to_default>(
         result, assigned_to_default.get_group_range()[i] == gs[i] / ls[i]);
   }
+#endif  // !SYCL_CTS_COMPILING_WITH_ADAPTIVECPP &&
+        // !SYCL_CTS_COMPILING_WITH_PROTOSYCL
 
   sycl::nd_range<dim> nd_range = get_nd_range<dim, with_offset>(ls, gs);
   for (int i = 0; i < dim; i++) {
