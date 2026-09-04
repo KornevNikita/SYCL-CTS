@@ -11,6 +11,8 @@
 #include "../common/disabled_for_test_case.h"
 #ifndef SYCL_CTS_COMPILING_WITH_ADAPTIVECPP
 #include "../common/semantics_reference.h"
+#include <cstddef>
+#include <utility>
 #endif
 
 template <int Dimensions>
@@ -123,3 +125,41 @@ DISABLED_FOR_TEST_CASE(AdaptiveCpp)
     CHECK(new_val == result);
   }
 });
+
+// Checks that every member function of sycl::local_accessor that the
+// specification declares with a "noexcept" exception specification is actually
+// declared that way.
+namespace local_accessor_noexcept {
+
+template <int Dimensions>
+constexpr bool check_local_accessor() {
+  using accessor_t = sycl::local_accessor<int, Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().byte_size());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().size());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().empty());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>()
+                     .template get_multi_ptr<sycl::access::decorated::yes>());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>()
+                     .template get_multi_ptr<sycl::access::decorated::no>());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().begin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().end());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().cbegin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().cend());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().rbegin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().rend());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().crbegin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().crend());
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().max_size());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().get_pointer());
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+static_assert(check_local_accessor<1>());
+static_assert(check_local_accessor<2>());
+static_assert(check_local_accessor<3>());
+
+}  // namespace local_accessor_noexcept

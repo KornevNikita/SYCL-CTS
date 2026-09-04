@@ -9,6 +9,7 @@
 *******************************************************************************/
 
 #include "../common/common.h"
+#include <utility>
 
 struct kernel_name_api {
   void operator()() const {}
@@ -40,3 +41,9 @@ TEST_CASE("Test kernel API", "[kernel]") {
 };
 
 } /* namespace kernel_api__ */
+
+// Checks that sycl::kernel::get_backend() is declared noexcept as required by
+// the specification.
+namespace kernel_noexcept {
+CHECK_NOEXCEPT(std::declval<const sycl::kernel&>().get_backend());
+}  // namespace kernel_noexcept

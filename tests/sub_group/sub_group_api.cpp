@@ -20,6 +20,7 @@
 #include <limits>
 #include <numeric>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 /** Each of the functions called by the work-items in the below test. */
@@ -515,3 +516,21 @@ TEST_CASE("sub-group api", "[sub_group]") {
   CHECK(std::all_of(item_seen.begin(), item_seen.end(),
                     [](bool index_is_seen) { return index_is_seen; }));
 }
+
+// Checks that every member function of sycl::sub_group that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace sub_group_noexcept {
+using sub_group_t = sycl::sub_group;
+
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_group_id());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_local_id());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_local_range());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_group_range());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_max_local_range());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_group_linear_id());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_local_linear_id());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_group_linear_range());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().get_local_linear_range());
+CHECK_NOEXCEPT(std::declval<const sub_group_t&>().leader());
+}  // namespace sub_group_noexcept

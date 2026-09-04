@@ -10,6 +10,8 @@
 
 #include "../common/common.h"
 #include "../common/type_coverage.h"
+#include <cstddef>
+#include <utility>
 
 #define TEST_NAME range_api
 
@@ -459,3 +461,84 @@ class TEST_NAME : public util::test_base {
 util::test_proxy<TEST_NAME> proxy;
 
 } /* namespace range_api__ */
+
+// Checks that every member and hidden friend function of sycl::range that the
+// specification declares with a "noexcept" exception specification is actually
+// declared that way.
+namespace range_noexcept {
+
+// clang-format off
+// All binary operators listed in the sycl::range synopsis.
+#define SYCL_CTS_RANGE_BINARY_OPS(F) \
+  F(+) F(-) F(*) F(/) F(%) F(<<) F(>>) F(&) F(|) F(^) F(&&) F(||) \
+  F(<) F(>) F(<=) F(>=)
+
+// All compound assignment operators listed in the sycl::range synopsis.
+#define SYCL_CTS_RANGE_COMPOUND_OPS(F) \
+  F(+=) F(-=) F(*=) F(/=) F(%=) F(<<=) F(>>=) F(&=) F(|=) F(^=)
+// clang-format on
+
+template <int Dimensions>
+constexpr bool check_range() {
+  using range_t = sycl::range<Dimensions>;
+
+  CHECK_NOEXCEPT(range_t());
+
+  // FIXME: DPC++ does not declare any of the following noexcept, re-enable
+  // once it does.
+#if !SYCL_CTS_COMPILING_WITH_DPCPP
+  // Constructors.
+  if constexpr (Dimensions == 1) {
+    CHECK_NOEXCEPT(range_t(std::declval<std::size_t>()));
+  } else if constexpr (Dimensions == 2) {
+    CHECK_NOEXCEPT(
+        range_t(std::declval<std::size_t>(), std::declval<std::size_t>()));
+  } else {
+    CHECK_NOEXCEPT(range_t(std::declval<std::size_t>(),
+                           std::declval<std::size_t>(),
+                           std::declval<std::size_t>()));
+  }
+
+  // Member functions.
+  CHECK_NOEXCEPT(std::declval<const range_t&>().get(0));
+  CHECK_NOEXCEPT(std::declval<range_t&>()[0]);
+  CHECK_NOEXCEPT(std::declval<const range_t&>()[0]);
+  CHECK_NOEXCEPT(std::declval<const range_t&>().size());
+
+  // Hidden friend operators.
+#define SYCL_CTS_CHECK_BINARY(OP)                            \
+  CHECK_NOEXCEPT(std::declval<const range_t&>()              \
+                     OP std::declval<const range_t&>());     \
+  CHECK_NOEXCEPT(std::declval<const range_t&>()              \
+                     OP std::declval<const std::size_t&>()); \
+  CHECK_NOEXCEPT(std::declval<const std::size_t&>()          \
+                     OP std::declval<const range_t&>());
+  SYCL_CTS_RANGE_BINARY_OPS(SYCL_CTS_CHECK_BINARY)
+#undef SYCL_CTS_CHECK_BINARY
+
+#define SYCL_CTS_CHECK_COMPOUND(OP)                                           \
+  CHECK_NOEXCEPT(std::declval<range_t&>() OP std::declval<const range_t&>()); \
+  CHECK_NOEXCEPT(std::declval<range_t&>()                                     \
+                     OP std::declval<const std::size_t&>());
+  SYCL_CTS_RANGE_COMPOUND_OPS(SYCL_CTS_CHECK_COMPOUND)
+#undef SYCL_CTS_CHECK_COMPOUND
+
+  CHECK_NOEXCEPT(+std::declval<const range_t&>());
+  CHECK_NOEXCEPT(-std::declval<const range_t&>());
+  CHECK_NOEXCEPT(++std::declval<range_t&>());
+  CHECK_NOEXCEPT(--std::declval<range_t&>());
+  CHECK_NOEXCEPT(std::declval<range_t&>()++);
+  CHECK_NOEXCEPT(std::declval<range_t&>()--);
+#endif
+
+  return true;
+}
+
+#undef SYCL_CTS_RANGE_BINARY_OPS
+#undef SYCL_CTS_RANGE_COMPOUND_OPS
+
+static_assert(check_range<1>());
+static_assert(check_range<2>());
+static_assert(check_range<3>());
+
+}  // namespace range_noexcept

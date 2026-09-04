@@ -15,8 +15,10 @@
 #include "../../util/named_requirement_verification/legacy_random_access_iterator.h"
 #include "../common/disabled_for_test_case.h"
 #include "../common/get_cts_object.h"
+#include "../common/macros.h"
 #include "../common/once_per_unit.h"
 #include "catch2/catch_test_macros.hpp"
+#include <utility>
 
 namespace accessor_iterator_requirement {
 
@@ -313,3 +315,105 @@ TEST_CASE(
 }
 
 }  // namespace accessor_iterator_requirement
+
+// Checks that every member function of sycl::accessor that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace accessor_noexcept {
+
+template <typename AccessorT>
+constexpr bool check_common_members() {
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().byte_size());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().size());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().empty());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().begin());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().end());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().cbegin());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().cend());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().rbegin());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().rend());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().crbegin());
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().crend());
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(std::declval<const AccessorT&>().max_size());
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+template <int Dimensions, sycl::access_mode AccessMode>
+constexpr bool check_device_accessor() {
+  using accessor_t =
+      sycl::accessor<int, Dimensions, AccessMode, sycl::target::device>;
+  check_common_members<accessor_t>();
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>()
+                     .template get_multi_ptr<sycl::access::decorated::yes>());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>()
+                     .template get_multi_ptr<sycl::access::decorated::no>());
+
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().get_pointer());
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+template <int Dimensions, sycl::access_mode AccessMode>
+constexpr bool check_host_task_accessor() {
+  using accessor_t =
+      sycl::accessor<int, Dimensions, AccessMode, sycl::target::host_task>;
+  check_common_members<accessor_t>();
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().get_pointer());
+
+  return true;
+}
+
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+template <int Dimensions>
+constexpr bool check_deprecated_targets() {
+  using constant_accessor_t =
+      sycl::accessor<int, Dimensions, sycl::access_mode::read,
+                     sycl::target::constant_buffer>;
+  using host_buffer_accessor_t =
+      sycl::accessor<int, Dimensions, sycl::access_mode::read_write,
+                     sycl::target::host_buffer>;
+  using local_target_accessor_t =
+      sycl::accessor<int, Dimensions, sycl::access_mode::read_write,
+                     sycl::target::local>;
+
+  CHECK_NOEXCEPT(std::declval<const host_buffer_accessor_t&>().get_pointer());
+
+#if !SYCL_CTS_COMPILING_WITH_DPCPP
+  // FIXME: re-enable once DPC++ declares these members noexcept.
+  CHECK_NOEXCEPT(std::declval<const constant_accessor_t&>().get_size());
+  CHECK_NOEXCEPT(std::declval<const constant_accessor_t&>().get_count());
+  CHECK_NOEXCEPT(std::declval<const constant_accessor_t&>().get_pointer());
+  CHECK_NOEXCEPT(std::declval<const local_target_accessor_t&>().get_pointer());
+#endif
+
+  return true;
+}
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+template <int Dimensions>
+constexpr bool check_all() {
+  return check_device_accessor<Dimensions, sycl::access_mode::read>() &&
+         check_device_accessor<Dimensions, sycl::access_mode::write>() &&
+         check_device_accessor<Dimensions, sycl::access_mode::read_write>() &&
+         check_host_task_accessor<Dimensions, sycl::access_mode::read>() &&
+         check_host_task_accessor<Dimensions, sycl::access_mode::write>() &&
+         check_host_task_accessor<Dimensions,
+                                  sycl::access_mode::read_write>() &&
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+         check_deprecated_targets<Dimensions>() &&
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+         true;
+}
+
+static_assert(check_all<1>());
+static_assert(check_all<2>());
+static_assert(check_all<3>());
+
+}  // namespace accessor_noexcept

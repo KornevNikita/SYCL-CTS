@@ -12,6 +12,7 @@
 
 #include <string>
 #include <type_traits>
+#include <utility>
 
 template <typename Property>
 void check_property_impl() {
@@ -95,3 +96,54 @@ TEST_CASE("property api", "[property]") {
     for_all_combinations<check_property>(properties);
   }
 }
+
+// Checks that the has_property() member function of the property interface is
+// declared noexcept for every SYCL object providing that interface.
+namespace property_noexcept {
+
+template <typename Property, typename SyclObject>
+constexpr bool check_has_property() {
+  CHECK_NOEXCEPT(
+      std::declval<const SyclObject&>().template has_property<Property>());
+  return true;
+}
+
+static_assert(
+    check_has_property<sycl::property::queue::enable_profiling, sycl::queue>());
+static_assert(
+    check_has_property<sycl::property::queue::in_order, sycl::queue>());
+
+static_assert(check_has_property<sycl::property::buffer::use_host_ptr,
+                                 sycl::buffer<int>>());
+static_assert(
+    check_has_property<sycl::property::buffer::use_mutex, sycl::buffer<int>>());
+static_assert(check_has_property<sycl::property::buffer::context_bound,
+                                 sycl::buffer<int>>());
+
+static_assert(check_has_property<sycl::property::image::use_host_ptr,
+                                 sycl::unsampled_image<>>());
+static_assert(check_has_property<sycl::property::image::use_mutex,
+                                 sycl::unsampled_image<>>());
+static_assert(check_has_property<sycl::property::image::context_bound,
+                                 sycl::unsampled_image<>>());
+
+static_assert(check_has_property<sycl::property::image::use_host_ptr,
+                                 sycl::sampled_image<>>());
+static_assert(check_has_property<sycl::property::image::use_mutex,
+                                 sycl::sampled_image<>>());
+static_assert(check_has_property<sycl::property::image::context_bound,
+                                 sycl::sampled_image<>>());
+
+static_assert(
+    check_has_property<sycl::property::no_init, sycl::accessor<int>>());
+static_assert(
+    check_has_property<sycl::property::no_init, sycl::host_accessor<int>>());
+static_assert(
+    check_has_property<sycl::property::no_init,
+                       sycl::unsampled_image_accessor<
+                           sycl::int4, 1, sycl::access_mode::read>>());
+static_assert(
+    check_has_property<sycl::property::no_init,
+                       sycl::host_unsampled_image_accessor<sycl::int4, 1>>());
+
+}  // namespace property_noexcept

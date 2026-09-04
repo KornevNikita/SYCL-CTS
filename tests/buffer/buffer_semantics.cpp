@@ -9,6 +9,8 @@
 
 #include "../common/common.h"
 #include "../common/semantics_reference.h"
+#include <cstddef>
+#include <utility>
 
 template <int Dimensions>
 struct storage {
@@ -64,3 +66,24 @@ TEST_CASE("buffer common reference semantics, mutation", "[buffer]") {
   // Not possible, since accessor cannot be constructed with a const buffer,
   // and hence its contents cannot be verified.
 }
+
+// Checks that every member function of sycl::buffer that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace buffer_noexcept {
+
+template <int Dimensions>
+constexpr bool check_buffer() {
+  using buffer_t = sycl::buffer<int, Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const buffer_t&>().byte_size());
+  CHECK_NOEXCEPT(std::declval<const buffer_t&>().size());
+
+  return true;
+}
+
+static_assert(check_buffer<1>());
+static_assert(check_buffer<2>());
+static_assert(check_buffer<3>());
+
+}  // namespace buffer_noexcept

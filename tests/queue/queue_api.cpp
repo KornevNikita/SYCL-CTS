@@ -10,6 +10,7 @@
 
 #include "../common/common.h"
 #include <thread>
+#include <utility>
 
 namespace queue_api {
 
@@ -132,3 +133,9 @@ TEST_CASE("Check the api for sycl::queue", "[queue]") {
 }
 
 } /* namespace queue_api */
+
+// Checks that sycl::queue::get_backend() is declared noexcept as required by
+// the specification.
+namespace queue_noexcept {
+CHECK_NOEXCEPT(std::declval<const sycl::queue&>().get_backend());
+}  // namespace queue_noexcept

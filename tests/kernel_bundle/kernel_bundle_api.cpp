@@ -11,6 +11,7 @@
 #include "catch2/catch_test_macros.hpp"
 
 #include "kernel_bundle.h"
+#include <utility>
 
 TEST_CASE(
     "Check that is_default_constructible_v<sycl::kernel_bundle> is false"
@@ -134,3 +135,48 @@ TEST_CASE(
   auto kernel = kernel_bundle.get_kernel<kernel_name>();
   CHECK(std::is_same_v<decltype(kernel), sycl::kernel>);
 }
+
+// Checks that every member function of sycl::kernel_bundle that the
+// specification declares with a "noexcept" exception specification is actually
+// declared that way. sycl::kernel_id::get_name() is covered by
+// kernel_id_api.cpp and sycl::device_image::has_kernel() by
+// device_image_api.cpp.
+namespace kernel_bundle_noexcept {
+
+class noexcept_kernel_name;
+
+constexpr sycl::specialization_id<int> spec_const{0};
+
+template <sycl::bundle_state State>
+constexpr bool check_kernel_bundle() {
+  using kernel_bundle_t = sycl::kernel_bundle<State>;
+
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>().empty());
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>().get_backend());
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>().get_context());
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>().get_devices());
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>().has_kernel(
+      std::declval<const sycl::kernel_id&>()));
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>().has_kernel(
+      std::declval<const sycl::kernel_id&>(),
+      std::declval<const sycl::device&>()));
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>()
+                     .template has_kernel<noexcept_kernel_name>());
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>()
+                     .template has_kernel<noexcept_kernel_name>(
+                         std::declval<const sycl::device&>()));
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>()
+                     .contains_specialization_constants());
+  CHECK_NOEXCEPT(
+      std::declval<const kernel_bundle_t&>().native_specialization_constant());
+  CHECK_NOEXCEPT(std::declval<const kernel_bundle_t&>()
+                     .template has_specialization_constant<spec_const>());
+
+  return true;
+}
+
+static_assert(check_kernel_bundle<sycl::bundle_state::input>());
+static_assert(check_kernel_bundle<sycl::bundle_state::object>());
+static_assert(check_kernel_bundle<sycl::bundle_state::executable>());
+
+}  // namespace kernel_bundle_noexcept

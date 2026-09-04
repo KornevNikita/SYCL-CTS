@@ -15,6 +15,7 @@
 #ifdef SYCL_BACKEND_OPENCL
 #include <CL/cl.h>
 #include <sycl/backend/opencl.hpp>
+#include <utility>
 #endif  // SYCL_BACKEND_OPENCL
 
 #define TEST_NAME host_task_interop_api
@@ -132,3 +133,9 @@ class TEST_NAME : public sycl_cts::util::test_base {
 
 util::test_proxy<TEST_NAME> proxy;
 }  // namespace TEST_NAMESPACE
+
+// Checks that sycl::interop_handle::get_backend() is declared noexcept as
+// required by the specification.
+namespace interop_handle_noexcept {
+CHECK_NOEXCEPT(std::declval<const sycl::interop_handle&>().get_backend());
+}  // namespace interop_handle_noexcept

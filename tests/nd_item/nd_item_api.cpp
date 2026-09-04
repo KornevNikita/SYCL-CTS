@@ -11,6 +11,8 @@
 #include "../common/common.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <utility>
 
 namespace test_nd_item__ {
 using namespace sycl_cts;
@@ -349,3 +351,81 @@ TEST_CASE("sycl::nd_item<2> API", "[nd_item]") { test_item<2>(); }
 TEST_CASE("sycl::nd_item<3> API", "[nd_item]") { test_item<3>(); }
 
 } /* namespace test_nd_item__ */
+
+// Checks that every member function of sycl::nd_item that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace nd_item_noexcept {
+
+template <int Dimensions>
+constexpr bool check_nd_item() {
+  using nd_item_t = sycl::nd_item<Dimensions>;
+  using data_t = int;
+
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_global_id());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_global_id(0));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_global_linear_id());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_local_id());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_local_id(0));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_local_linear_id());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_group());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_sub_group());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_group(0));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_group_linear_id());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_group_range());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_group_range(0));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_global_range());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_global_range(0));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_local_range());
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_local_range(0));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_nd_range());
+
+  // async_work_group_copy taking decorated multi_ptr.
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<std::size_t>(), std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<std::size_t>(), std::declval<std::size_t>()));
+
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().wait_for(
+      std::declval<sycl::device_event>()));
+
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().get_offset());
+
+  // async_work_group_copy taking undecorated multi_ptr.
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::local_ptr<data_t>>(),
+      std::declval<sycl::global_ptr<data_t>>(), std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::global_ptr<data_t>>(),
+      std::declval<sycl::local_ptr<data_t>>(), std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::local_ptr<data_t>>(),
+      std::declval<sycl::global_ptr<data_t>>(), std::declval<std::size_t>(),
+      std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const nd_item_t&>().async_work_group_copy(
+      std::declval<sycl::global_ptr<data_t>>(),
+      std::declval<sycl::local_ptr<data_t>>(), std::declval<std::size_t>(),
+      std::declval<std::size_t>()));
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+static_assert(check_nd_item<1>());
+static_assert(check_nd_item<2>());
+static_assert(check_nd_item<3>());
+
+}  // namespace nd_item_noexcept

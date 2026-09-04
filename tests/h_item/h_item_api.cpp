@@ -10,6 +10,7 @@
 #include "../common/common.h"
 #include <algorithm>
 #include <string>
+#include <utility>
 
 namespace h_item_api {
 using namespace sycl_cts;
@@ -561,3 +562,46 @@ TEST_CASE("h_item_2d API", "[h_item]") { api_tests<2>{}(); }
 TEST_CASE("h_item_3d API", "[h_item]") { api_tests<3>{}(); }
 
 }  // namespace h_item_api
+
+// Checks that every member function of sycl::h_item that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace h_item_noexcept {
+
+// FIXME: DPC++ does not declare any member of sycl::h_item noexcept, re-enable
+// once it does.
+#if !SYCL_CTS_COMPILING_WITH_DPCPP
+template <int Dimensions>
+constexpr bool check_h_item() {
+  using h_item_t = sycl::h_item<Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_global());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_local());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_logical_local());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_physical_local());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_global_range());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_global_range(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_global_id());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_global_id(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_local_range());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_local_range(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_local_id());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_local_id(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_logical_local_range());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_logical_local_range(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_logical_local_id());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_logical_local_id(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_physical_local_range());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_physical_local_range(0));
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_physical_local_id());
+  CHECK_NOEXCEPT(std::declval<const h_item_t&>().get_physical_local_id(0));
+
+  return true;
+}
+
+static_assert(check_h_item<1>());
+static_assert(check_h_item<2>());
+static_assert(check_h_item<3>());
+#endif
+
+}  // namespace h_item_noexcept

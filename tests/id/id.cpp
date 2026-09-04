@@ -14,6 +14,7 @@
 
 #include "../common/common.h"
 #include "../common/disabled_for_test_case.h"
+#include <cstddef>
 
 using namespace sycl_cts;
 
@@ -1506,3 +1507,84 @@ TEST_CASE("id can deduce dimensionality from constructor parameters", "[id]") {
   KCHECK(EVAL((std::is_same_v<decltype(id{5, 8}), id<2>>)));
   KCHECK(EVAL((std::is_same_v<decltype(id{5, 8, 3}), id<3>>)));
 }
+
+// Checks that every member and hidden friend function of sycl::id that the
+// specification declares with a "noexcept" exception specification is actually
+// declared that way.
+namespace id_noexcept {
+
+// clang-format off
+// All binary operators listed in the sycl::id synopsis.
+#define SYCL_CTS_ID_BINARY_OPS(F) \
+  F(+) F(-) F(*) F(/) F(%) F(<<) F(>>) F(&) F(|) F(^) F(&&) F(||) \
+  F(<) F(>) F(<=) F(>=)
+
+// All compound assignment operators listed in the sycl::id synopsis.
+#define SYCL_CTS_ID_COMPOUND_OPS(F) \
+  F(+=) F(-=) F(*=) F(/=) F(%=) F(<<=) F(>>=) F(&=) F(|=) F(^=)
+// clang-format on
+
+template <int Dimensions>
+constexpr bool check_id() {
+  using id_t = sycl::id<Dimensions>;
+
+  // Constructors.
+  CHECK_NOEXCEPT(id_t());
+  if constexpr (Dimensions == 1) {
+    CHECK_NOEXCEPT(id_t(std::declval<std::size_t>()));
+  } else if constexpr (Dimensions == 2) {
+    CHECK_NOEXCEPT(
+        id_t(std::declval<std::size_t>(), std::declval<std::size_t>()));
+  } else {
+    CHECK_NOEXCEPT(id_t(std::declval<std::size_t>(),
+                        std::declval<std::size_t>(),
+                        std::declval<std::size_t>()));
+  }
+  CHECK_NOEXCEPT(id_t(std::declval<const sycl::range<Dimensions>&>()));
+  CHECK_NOEXCEPT(id_t(std::declval<const sycl::item<Dimensions>&>()));
+
+  // Member functions.
+#if !SYCL_CTS_COMPILING_WITH_DPCPP
+  // FIXME: re-enable once DPC++ declares these members noexcept.
+  CHECK_NOEXCEPT(std::declval<const id_t&>().get(0));
+  CHECK_NOEXCEPT(std::declval<id_t&>()[0]);
+  CHECK_NOEXCEPT(std::declval<const id_t&>()[0]);
+#endif
+  if constexpr (Dimensions == 1) {
+    CHECK_NOEXCEPT(static_cast<std::size_t>(std::declval<const id_t&>()));
+  }
+
+  // Hidden friend operators.
+#define SYCL_CTS_CHECK_BINARY(OP)                                             \
+  CHECK_NOEXCEPT(std::declval<const id_t&>() OP std::declval<const id_t&>()); \
+  CHECK_NOEXCEPT(std::declval<const id_t&>()                                  \
+                     OP std::declval<const std::size_t&>());                  \
+  CHECK_NOEXCEPT(std::declval<const std::size_t&>()                           \
+                     OP std::declval<const id_t&>());
+  SYCL_CTS_ID_BINARY_OPS(SYCL_CTS_CHECK_BINARY)
+#undef SYCL_CTS_CHECK_BINARY
+
+#define SYCL_CTS_CHECK_COMPOUND(OP)                                     \
+  CHECK_NOEXCEPT(std::declval<id_t&>() OP std::declval<const id_t&>()); \
+  CHECK_NOEXCEPT(std::declval<id_t&>() OP std::declval<const std::size_t&>());
+  SYCL_CTS_ID_COMPOUND_OPS(SYCL_CTS_CHECK_COMPOUND)
+#undef SYCL_CTS_CHECK_COMPOUND
+
+  CHECK_NOEXCEPT(+std::declval<const id_t&>());
+  CHECK_NOEXCEPT(-std::declval<const id_t&>());
+  CHECK_NOEXCEPT(++std::declval<id_t&>());
+  CHECK_NOEXCEPT(--std::declval<id_t&>());
+  CHECK_NOEXCEPT(std::declval<id_t&>()++);
+  CHECK_NOEXCEPT(std::declval<id_t&>()--);
+
+  return true;
+}
+
+#undef SYCL_CTS_ID_BINARY_OPS
+#undef SYCL_CTS_ID_COMPOUND_OPS
+
+static_assert(check_id<1>());
+static_assert(check_id<2>());
+static_assert(check_id<3>());
+
+}  // namespace id_noexcept

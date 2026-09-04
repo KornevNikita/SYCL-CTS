@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include <utility>
 
 #define TEST_NAME device_event_api
 
@@ -93,3 +94,12 @@ class TEST_NAME : public util::test_base {
 util::test_proxy<TEST_NAME> proxy;
 
 }  // namespace TEST_NAMESPACE
+
+// Checks that sycl::device_event::wait() is declared noexcept as required by
+// the specification.
+namespace device_event_noexcept {
+#if !SYCL_CTS_COMPILING_WITH_DPCPP
+// FIXME: re-enable once DPC++ declares device_event::wait() noexcept.
+CHECK_NOEXCEPT(std::declval<sycl::device_event&>().wait());
+#endif
+}  // namespace device_event_noexcept

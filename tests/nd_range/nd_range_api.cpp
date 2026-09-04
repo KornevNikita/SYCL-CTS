@@ -9,6 +9,7 @@
 *******************************************************************************/
 
 #include "../common/common.h"
+#include <utility>
 
 #define TEST_NAME nd_range_api
 
@@ -125,3 +126,34 @@ class TEST_NAME : public util::test_base {
 util::test_proxy<TEST_NAME> proxy;
 
 }  // namespace TEST_NAMESPACE
+
+// Checks that every member function of sycl::nd_range that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace nd_range_noexcept {
+
+template <int Dimensions>
+constexpr bool check_nd_range() {
+  using nd_range_t = sycl::nd_range<Dimensions>;
+
+  CHECK_NOEXCEPT(nd_range_t(std::declval<sycl::range<Dimensions>>(),
+                            std::declval<sycl::range<Dimensions>>()));
+  CHECK_NOEXCEPT(std::declval<const nd_range_t&>().get_global_range());
+  CHECK_NOEXCEPT(std::declval<const nd_range_t&>().get_local_range());
+  CHECK_NOEXCEPT(std::declval<const nd_range_t&>().get_group_range());
+
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(nd_range_t(std::declval<sycl::range<Dimensions>>(),
+                            std::declval<sycl::range<Dimensions>>(),
+                            std::declval<sycl::id<Dimensions>>()));
+  CHECK_NOEXCEPT(std::declval<const nd_range_t&>().get_offset());
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+static_assert(check_nd_range<1>());
+static_assert(check_nd_range<2>());
+static_assert(check_nd_range<3>());
+
+}  // namespace nd_range_noexcept

@@ -10,6 +10,8 @@
 #include "../common/common.h"
 #include "../common/semantics_reference.h"
 #include "../image/default_image.h"
+#include <cstddef>
+#include <utility>
 
 struct storage_sampled {
   std::size_t size;
@@ -123,3 +125,102 @@ TEST_CASE("unsampled_image_accessor common reference semantics (kernel)",
       "image_target::device>",
       {sycl::aspect::image});
 }
+
+// Checks that every member function of the image accessor classes that the
+// specification declares with a "noexcept" exception specification is actually
+// declared that way.
+namespace image_accessor_noexcept {
+
+// Coordinate type used by unsampled image accessors, see the specification of
+// unsampled_image_accessor::read().
+template <int Dimensions>
+using unsampled_coord_t = std::conditional_t<
+    Dimensions == 1, int,
+    std::conditional_t<Dimensions == 2, sycl::int2, sycl::int4>>;
+
+// Coordinate type used by sampled image accessors, see the specification of
+// sampled_image_accessor::read().
+template <int Dimensions>
+using sampled_coord_t = std::conditional_t<
+    Dimensions == 1, float,
+    std::conditional_t<Dimensions == 2, sycl::float2, sycl::float4>>;
+
+template <int Dimensions, sycl::image_target AccessTarget>
+constexpr bool check_unsampled_image_accessor() {
+  using data_t = sycl::int4;
+  using accessor_t =
+      sycl::unsampled_image_accessor<data_t, Dimensions,
+                                     sycl::access_mode::read, AccessTarget>;
+  using coord_t = unsampled_coord_t<Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().size());
+  CHECK_NOEXCEPT(
+      std::declval<const accessor_t&>().read(std::declval<const coord_t&>()));
+
+  return true;
+}
+
+template <int Dimensions>
+constexpr bool check_host_unsampled_image_accessor() {
+  using data_t = sycl::int4;
+  using accessor_t =
+      sycl::host_unsampled_image_accessor<data_t, Dimensions,
+                                          sycl::access_mode::read>;
+  using coord_t = unsampled_coord_t<Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().size());
+  CHECK_NOEXCEPT(
+      std::declval<const accessor_t&>().read(std::declval<const coord_t&>()));
+
+  return true;
+}
+
+template <int Dimensions, sycl::image_target AccessTarget>
+constexpr bool check_sampled_image_accessor() {
+  using data_t = sycl::int4;
+  using accessor_t =
+      sycl::sampled_image_accessor<data_t, Dimensions, AccessTarget>;
+  using coord_t = sampled_coord_t<Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().size());
+  CHECK_NOEXCEPT(
+      std::declval<const accessor_t&>().read(std::declval<const coord_t&>()));
+
+  return true;
+}
+
+template <int Dimensions>
+constexpr bool check_host_sampled_image_accessor() {
+  using data_t = sycl::int4;
+  using accessor_t = sycl::host_sampled_image_accessor<data_t, Dimensions>;
+  using coord_t = sampled_coord_t<Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().size());
+#if !SYCL_CTS_COMPILING_WITH_DPCPP
+  // FIXME: re-enable once DPC++ declares this overload of read() noexcept.
+  CHECK_NOEXCEPT(
+      std::declval<const accessor_t&>().read(std::declval<const coord_t&>()));
+#endif
+
+  return true;
+}
+
+template <int Dimensions>
+constexpr bool check_all() {
+  return check_unsampled_image_accessor<Dimensions,
+                                        sycl::image_target::device>() &&
+         check_unsampled_image_accessor<Dimensions,
+                                        sycl::image_target::host_task>() &&
+         check_host_unsampled_image_accessor<Dimensions>() &&
+         check_sampled_image_accessor<Dimensions,
+                                      sycl::image_target::device>() &&
+         check_sampled_image_accessor<Dimensions,
+                                      sycl::image_target::host_task>() &&
+         check_host_sampled_image_accessor<Dimensions>();
+}
+
+static_assert(check_all<1>());
+static_assert(check_all<2>());
+static_assert(check_all<3>());
+
+}  // namespace image_accessor_noexcept

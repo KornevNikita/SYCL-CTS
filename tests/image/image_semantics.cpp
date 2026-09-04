@@ -11,6 +11,8 @@
 #include "../common/disabled_for_test_case.h"
 #include "../common/semantics_reference.h"
 #include "default_image.h"
+#include <cstddef>
+#include <utility>
 
 #if !SYCL_CTS_COMPILING_WITH_ADAPTIVECPP
 
@@ -96,3 +98,27 @@ DISABLED_FOR_TEST_CASE(AdaptiveCpp)
     CHECK(value_operations::are_equal(new_val, read_val));
   }
 });
+
+// Checks that every member function of sycl::unsampled_image and
+// sycl::sampled_image that the specification declares with a "noexcept"
+// exception specification is actually declared that way.
+namespace image_noexcept {
+
+template <int Dimensions>
+constexpr bool check_images() {
+  using unsampled_image_t = sycl::unsampled_image<Dimensions>;
+  using sampled_image_t = sycl::sampled_image<Dimensions>;
+
+  CHECK_NOEXCEPT(std::declval<const unsampled_image_t&>().byte_size());
+  CHECK_NOEXCEPT(std::declval<const unsampled_image_t&>().size());
+  CHECK_NOEXCEPT(std::declval<const sampled_image_t&>().byte_size());
+  CHECK_NOEXCEPT(std::declval<const sampled_image_t&>().size());
+
+  return true;
+}
+
+static_assert(check_images<1>());
+static_assert(check_images<2>());
+static_assert(check_images<3>());
+
+}  // namespace image_noexcept

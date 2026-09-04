@@ -11,6 +11,7 @@
 
 #include "exceptions.h"
 #include <set>
+#include <utility>
 
 #define TEST_NAME exceptions_error_code
 
@@ -64,3 +65,13 @@ class TEST_NAME : public util::test_base {
 util::test_proxy<TEST_NAME> proxy;
 
 }  // namespace TEST_NAMESPACE
+
+// Checks that every member function of sycl::exception that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way. sycl::make_error_code() and sycl::sycl_category() are covered by
+// exceptions_make_error_code.cpp and exceptions_sycl_category.cpp.
+namespace exceptions_noexcept {
+CHECK_NOEXCEPT(std::declval<const sycl::exception&>().code());
+CHECK_NOEXCEPT(std::declval<const sycl::exception&>().category());
+CHECK_NOEXCEPT(std::declval<const sycl::exception&>().has_context());
+}  // namespace exceptions_noexcept

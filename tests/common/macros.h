@@ -127,4 +127,7 @@ inline void set_test_info(sycl_cts::util::test_base::info& out,
 #define ASSERT_RETURN_TYPE(expectedT, returnVal, MSG) \
   { static_assert(std::is_same<decltype(returnVal), expectedT>::value, MSG); }
 
+#define CHECK_NOEXCEPT(...) \
+  static_assert(noexcept(__VA_ARGS__), #__VA_ARGS__ " is not noexcept")
+
 #endif  // __SYCLCTS_TESTS_COMMON_MACROS_H

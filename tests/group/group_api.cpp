@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <limits>
 #include <sstream>
+#include <utility>
 
 using namespace sycl_cts;
 
@@ -521,3 +522,88 @@ TEST_CASE("group api", "[group]") {
     helper.validate_results();
   }
 }
+
+// Checks that every member function of sycl::group that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace group_noexcept {
+
+template <int Dimensions>
+struct work_item_functor {
+  void operator()(sycl::h_item<Dimensions>) const {}
+};
+
+template <int Dimensions>
+constexpr bool check_group() {
+  using group_t = sycl::group<Dimensions>;
+  using data_t = int;
+
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_group_id());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_group_id(0));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_local_id());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_local_id(0));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_local_range());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_local_range(0));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_group_range());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_group_range(0));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_max_local_range());
+  CHECK_NOEXCEPT(std::declval<const group_t&>()[0]);
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_group_linear_id());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_local_linear_id());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_group_linear_range());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().get_local_linear_range());
+  CHECK_NOEXCEPT(std::declval<const group_t&>().leader());
+
+  // async_work_group_copy taking decorated multi_ptr.
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<std::size_t>(), std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::decorated_global_ptr<data_t>>(),
+      std::declval<sycl::decorated_local_ptr<data_t>>(),
+      std::declval<std::size_t>(), std::declval<std::size_t>()));
+
+  CHECK_NOEXCEPT(std::declval<const group_t&>().wait_for(
+      std::declval<sycl::device_event>()));
+
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(std::declval<const group_t&>().parallel_for_work_item(
+      std::declval<const work_item_functor<Dimensions>&>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().parallel_for_work_item(
+      std::declval<sycl::range<Dimensions>>(),
+      std::declval<const work_item_functor<Dimensions>&>()));
+
+  // async_work_group_copy taking undecorated multi_ptr.
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::local_ptr<data_t>>(),
+      std::declval<sycl::global_ptr<data_t>>(), std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::global_ptr<data_t>>(),
+      std::declval<sycl::local_ptr<data_t>>(), std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::local_ptr<data_t>>(),
+      std::declval<sycl::global_ptr<data_t>>(), std::declval<std::size_t>(),
+      std::declval<std::size_t>()));
+  CHECK_NOEXCEPT(std::declval<const group_t&>().async_work_group_copy(
+      std::declval<sycl::global_ptr<data_t>>(),
+      std::declval<sycl::local_ptr<data_t>>(), std::declval<std::size_t>(),
+      std::declval<std::size_t>()));
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+static_assert(check_group<1>());
+static_assert(check_group<2>());
+static_assert(check_group<3>());
+
+}  // namespace group_noexcept

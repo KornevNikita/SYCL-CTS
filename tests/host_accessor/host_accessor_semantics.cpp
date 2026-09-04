@@ -10,6 +10,8 @@
 #include "../common/common.h"
 #include "../common/disabled_for_test_case.h"
 #include "../common/semantics_reference.h"
+#include <cstddef>
+#include <utility>
 
 template <int Dimensions>
 struct storage {
@@ -81,3 +83,44 @@ TEST_CASE("host_accessor common reference semantics, mutation",
     CHECK(new_val == t1[0]);
   }
 }
+
+// Checks that every member function of sycl::host_accessor that the
+// specification declares with a "noexcept" exception specification is actually
+// declared that way.
+namespace host_accessor_noexcept {
+
+template <int Dimensions, sycl::access_mode AccessMode>
+constexpr bool check_host_accessor() {
+  using accessor_t = sycl::host_accessor<int, Dimensions, AccessMode>;
+
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().byte_size());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().size());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().empty());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().get_pointer());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().begin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().end());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().cbegin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().cend());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().rbegin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().rend());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().crbegin());
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().crend());
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  CHECK_NOEXCEPT(std::declval<const accessor_t&>().max_size());
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+template <int Dimensions>
+constexpr bool check_all() {
+  return check_host_accessor<Dimensions, sycl::access_mode::read>() &&
+         check_host_accessor<Dimensions, sycl::access_mode::write>() &&
+         check_host_accessor<Dimensions, sycl::access_mode::read_write>();
+}
+
+static_assert(check_all<1>());
+static_assert(check_all<2>());
+static_assert(check_all<3>());
+
+}  // namespace host_accessor_noexcept

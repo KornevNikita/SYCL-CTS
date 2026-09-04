@@ -9,6 +9,7 @@
 *******************************************************************************/
 
 #include "../common/common.h"
+#include <utility>
 
 #define TEST_NAME device_api
 
@@ -215,3 +216,9 @@ class TEST_NAME : public util::test_base {
 util::test_proxy<TEST_NAME> proxy;
 
 }  // namespace TEST_NAMESPACE
+
+// Checks that sycl::device::get_backend() is declared noexcept as required by
+// the specification.
+namespace device_noexcept {
+CHECK_NOEXCEPT(std::declval<const sycl::device&>().get_backend());
+}  // namespace device_noexcept

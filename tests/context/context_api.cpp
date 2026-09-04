@@ -9,6 +9,7 @@
 *******************************************************************************/
 
 #include "../common/common.h"
+#include <utility>
 
 #define TEST_NAME context_api
 
@@ -53,3 +54,9 @@ class TEST_NAME : public util::test_base {
 util::test_proxy<TEST_NAME> proxy;
 
 } /* namespace context_api */
+
+// Checks that sycl::context::get_backend() is declared noexcept as required by
+// the specification.
+namespace context_noexcept {
+CHECK_NOEXCEPT(std::declval<const sycl::context&>().get_backend());
+}  // namespace context_noexcept

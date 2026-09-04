@@ -12,6 +12,8 @@
 #include "catch2/catch_test_macros.hpp"
 
 #include "../common/common.h"
+#include <cstddef>
+#include <utility>
 
 namespace item_api_test {
 using namespace sycl_cts;
@@ -282,3 +284,44 @@ TEST_CASE("sycl::item<2> api", "[item]") { test_item<2>(); }
 TEST_CASE("sycl::item<3> api", "[item]") { test_item<3>(); }
 
 }  // namespace item_api_test
+
+// Checks that every member function of sycl::item that the specification
+// declares with a "noexcept" exception specification is actually declared that
+// way.
+namespace item_noexcept {
+
+template <int Dimensions, bool WithOffset>
+constexpr bool check_item() {
+  using item_t = sycl::item<Dimensions, WithOffset>;
+
+  CHECK_NOEXCEPT(std::declval<const item_t&>().get_id());
+  CHECK_NOEXCEPT(std::declval<const item_t&>().get_id(0));
+  CHECK_NOEXCEPT(std::declval<const item_t&>()[0]);
+  CHECK_NOEXCEPT(std::declval<const item_t&>().get_range());
+  CHECK_NOEXCEPT(std::declval<const item_t&>().get_range(0));
+  CHECK_NOEXCEPT(std::declval<const item_t&>().get_linear_id());
+
+  if constexpr (Dimensions == 1) {
+    CHECK_NOEXCEPT(static_cast<std::size_t>(std::declval<const item_t&>()));
+  }
+
+#if SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+  if constexpr (WithOffset) {
+    CHECK_NOEXCEPT(std::declval<const item_t&>().get_offset());
+  } else {
+    CHECK_NOEXCEPT(static_cast<sycl::item<Dimensions, true>>(
+        std::declval<const item_t&>()));
+  }
+#endif  // SYCL_CTS_ENABLE_DEPRECATED_FEATURES_TESTS
+
+  return true;
+}
+
+static_assert(check_item<1, true>());
+static_assert(check_item<2, true>());
+static_assert(check_item<3, true>());
+static_assert(check_item<1, false>());
+static_assert(check_item<2, false>());
+static_assert(check_item<3, false>());
+
+}  // namespace item_noexcept
